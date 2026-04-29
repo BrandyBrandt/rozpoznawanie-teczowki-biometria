@@ -50,8 +50,3 @@ Konfiguracja MMU zaklada lokalna obecnosc katalogu `MMU-Iris-Database`.
 - prog EER: `0.2160`
 - accuracy identyfikacji leave-one-out: `0.8578`
 
-## Uwagi
-
-- Pelny katalog `MMU-Iris-Database` nie jest dolaczony do repozytorium.
-- W katalogu `results_mmu/` pozostawiono koncowe wyniki potrzebne do udokumentowania dzialania systemu.
-- Raport w katalogu `sprawozdanie/` jest zgodny z aktualnymi wynikami uzyskanymi dla finalnej konfiguracji.
