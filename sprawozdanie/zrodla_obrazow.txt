@@ -1,0 +1,10 @@
+Publiczne obrazy tęczówek użyte do testu pochodzą z repozytorium:
+https://github.com/andreibercu/iris-recognition
+
+Skopiowane pliki:
+- S2001R01.jpg
+- S2001R09.jpg
+- S2002R01.jpg
+- S2002R20.jpg
+- S2005R07.jpg
+- S2005R09.jpg
