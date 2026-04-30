@@ -1,6 +1,6 @@
 {
   "paths": {
-    "input_dir": "../MMU-Iris-Database",
+    "input_dir": "MMU-Iris-Database",
     "output_dir": "results_mmu"
   },
   "preprocessing": {

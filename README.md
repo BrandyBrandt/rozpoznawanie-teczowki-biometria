@@ -1,52 +1,54 @@
-# Rozpoznawanie teczowki - Projekt 2 z Biometrii
+# Rozpoznawanie tęczówki - Projekt 2 z Biometrii
 
-Repozytorium zawiera finalna wersje projektu rozpoznawania czlowieka na podstawie obrazu teczowki. Implementacja obejmuje pelny pipeline od preprocessingu i segmentacji, przez normalizacje i kodowanie teczowki, az do porownywania kodow i oceny jakosci na zbiorze MMU Iris Dataset.
+Repozytorium zawiera finalną wersję projektu rozpoznawania człowieka na podstawie obrazu tęczówki. Implementacja obejmuje pełny pipeline: od preprocessingu i segmentacji, przez normalizację i kodowanie tęczówki, aż do porównywania kodów i oceny jakości na zbiorze MMU Iris Dataset.
 
-## Zawartosc repozytorium
+## Zawartość repozytorium
 
-- `src/` - kod zrodlowy aplikacji
-- `config/` - pliki konfiguracyjne dla przykladowych danych i dla MMU
-- `tests/` - testy jednostkowe
-- `zdjecia/` - przykladowe obrazy wejsciowe
-- `results_mmu/` - dolaczone artefakty walidacji na MMU
-- `sprawozdanie/` - zrodla raportu w LaTeX oraz skompilowany `main.pdf`
+- `src/` - kod źródłowy aplikacji
+- `config/` - pliki konfiguracyjne uruchomień
+- `results_iris/` - wyniki dla całego datasetu MMU Iris
+- `results_mmu_small/` - wyniki dla mniejszego podzbioru MMU Iris (20 przypadków)
+- `sprawozdanie/` - skompilowany raport `main.pdf`
+- `README.md`, `pyproject.toml` - dokumentacja i konfiguracja projektu
 
-## Zakres rozwiazania
+## Zakres rozwiązania
 
 Pipeline realizuje kolejne etapy:
 
-- binaryzacje i przygotowanie obrazu w skali szarosci
-- segmentacje zrenicy
-- segmentacje teczowki
-- rozwiniecie teczowki do postaci prostokatnej
-- podzial na 8 pasow radialnych
-- kodowanie z uzyciem filtra Gabora
-- porownywanie kodow maskowana odlegloscia Hamminga
-- ewaluacje FAR, FRR, EER i identyfikacji leave-one-out
+- binaryzację i przygotowanie obrazu w skali szarości
+- segmentację źrenicy
+- segmentację tęczówki
+- rozwinięcie tęczówki do postaci prostokątnej
+- podział na 8 pasów radialnych
+- kodowanie z użyciem filtra Gabora
+- porównywanie kodów maskowaną odległością Hamminga
+- ewaluację FAR, FRR, EER oraz identyfikacji leave-one-out
 
 ## Uruchomienie
 
+Sprawdzenie konfiguracji:
+
 ```powershell
-python src\iris\main.py --config config\default_config.json check-env
-python src\iris\main.py --config config\default_config.json run
-python -m unittest discover -s tests -p "test_*.py"
+python src\iris\main.py --config config\mmu_dataset_template.json check-env
 ```
 
-Pelna walidacja na MMU:
+Uruchomienie na pełnym MMU Iris:
 
 ```powershell
 python src\iris\main.py --config config\mmu_dataset_template.json run
 ```
 
-Konfiguracja MMU zaklada lokalna obecnosc katalogu `MMU-Iris-Database`.
+Uruchomienie na mniejszym podzbiorze (20 przypadków):
 
-## Wyniki koncowe dla MMU
+```powershell
+python src\iris\main.py --config config\mmu_dataset_small.json run
+```
 
-- liczba klas teczowki: 90
-- liczba obrazow: 450
-- liczba par genuine: 900
-- liczba par impostor: 100125
-- EER: `0.2066`
-- prog EER: `0.2160`
-- accuracy identyfikacji leave-one-out: `0.8578`
+Konfiguracja MMU zakłada lokalną obecność katalogu `MMU-Iris-Database` (nie jest dołączany do repozytorium).
+
+## Wyniki
+
+W katalogu `results_iris/` znajdują się wyniki dla całego datasetu MMU Iris.
+
+W katalogu `results_mmu_small/` znajdują się wyniki dla mniejszego zbioru (20 przypadków) i to na podstawie tego zbioru opisano wyniki w sprawozdaniu.
 

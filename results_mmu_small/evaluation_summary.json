@@ -1,0 +1,12 @@
+{
+  "genuine_pairs": 400,
+  "impostor_pairs": 19500,
+  "genuine_mean_distance": 0.17981690168380737,
+  "impostor_mean_distance": 0.22734080255031586,
+  "genuine_std_distance": 0.04073212668299675,
+  "impostor_std_distance": 0.01379559375345707,
+  "eer": 0.21199358999729156,
+  "eer_threshold": 0.21699999272823334,
+  "identification_accuracy_loo": 0.855,
+  "notes": "Full FAR/FRR/EER computed."
+}

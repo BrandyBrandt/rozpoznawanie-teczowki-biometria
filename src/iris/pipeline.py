@@ -20,6 +20,12 @@ LOGGER = logging.getLogger(__name__)
 SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
 
+def _stage_images_dir(output_dir: Path, stage_name: str) -> Path:
+    stage_dir = output_dir / stage_name
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    return stage_dir
+
+
 @dataclass(frozen=True)
 class Stage2Params:
     grayscale: bool
@@ -202,14 +208,13 @@ def _compute_stage2_artifacts(image_bgr: np.ndarray, params: Stage2Params) -> St
 
 
 def _save_stage2_debug(output_dir: Path, image_name: str, artifacts: Stage2Artifacts) -> None:
-    debug_dir = output_dir / "debug"
-    debug_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir = _stage_images_dir(output_dir, "binaryzacja")
     base = Path(image_name).stem
     writes = [
-        (debug_dir / f"{base}_gray.png", artifacts.gray),
-        (debug_dir / f"{base}_processed.png", artifacts.processed),
-        (debug_dir / f"{base}_iris_binary.png", artifacts.iris_binary),
-        (debug_dir / f"{base}_pupil_binary.png", artifacts.pupil_binary),
+        (stage_dir / f"{base}_gray.png", artifacts.gray),
+        (stage_dir / f"{base}_processed.png", artifacts.processed),
+        (stage_dir / f"{base}_iris_binary.png", artifacts.iris_binary),
+        (stage_dir / f"{base}_pupil_binary.png", artifacts.pupil_binary),
     ]
     for path, img in writes:
         if not cv2.imwrite(str(path), img):
@@ -450,14 +455,13 @@ def segment_pupil_from_stage2(artifacts: Stage2Artifacts, params: Stage3Params) 
 
 
 def _save_stage3_debug(output_dir: Path, image_name: str, component: np.ndarray, cx: int, cy: int, radius: int) -> None:
-    debug_dir = output_dir / "debug"
-    debug_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir = _stage_images_dir(output_dir, "segmentacja_zrenicy")
     base = Path(image_name).stem
     overlay = cv2.cvtColor(component, cv2.COLOR_GRAY2BGR)
     cv2.circle(overlay, (cx, cy), radius, (0, 255, 0), 2)
     cv2.circle(overlay, (cx, cy), 2, (0, 0, 255), -1)
-    cv2.imwrite(str(debug_dir / f"{base}_pupil_cleaned.png"), component)
-    cv2.imwrite(str(debug_dir / f"{base}_pupil_circle_overlay.png"), overlay)
+    cv2.imwrite(str(stage_dir / f"{base}_pupil_cleaned.png"), component)
+    cv2.imwrite(str(stage_dir / f"{base}_pupil_circle_overlay.png"), overlay)
 
 
 def run_stage3_pupil_segmentation(app_config: AppConfig) -> None:
@@ -545,14 +549,13 @@ def segment_iris_from_stage2(artifacts: Stage2Artifacts, stage3_params: Stage3Pa
 
 
 def _save_stage4_debug(output_dir: Path, image_name: str, gray: np.ndarray, cx: int, cy: int, pr: int, ir: int) -> None:
-    debug_dir = output_dir / "debug"
-    debug_dir.mkdir(parents=True, exist_ok=True)
+    stage_dir = _stage_images_dir(output_dir, "segmentacja_teczowki")
     base = Path(image_name).stem
     overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     cv2.circle(overlay, (cx, cy), pr, (0, 255, 0), 2)
     cv2.circle(overlay, (cx, cy), ir, (255, 0, 0), 2)
     cv2.circle(overlay, (cx, cy), 2, (0, 0, 255), -1)
-    cv2.imwrite(str(debug_dir / f"{base}_iris_circle_overlay.png"), overlay)
+    cv2.imwrite(str(stage_dir / f"{base}_iris_circle_overlay.png"), overlay)
 
 
 def run_stage4_iris_segmentation(app_config: AppConfig) -> None:
@@ -656,21 +659,19 @@ def normalize_iris_from_stage2(artifacts: Stage2Artifacts, stage3_params: Stage3
 
 
 def _save_stage5_outputs(output_dir: Path, image_stem: str, normalized: np.ndarray, params: Stage5Params) -> tuple[Path, Path]:
-    normalized_dir = output_dir / "normalized"
-    normalized_dir.mkdir(parents=True, exist_ok=True)
+    normalized_dir = _stage_images_dir(output_dir, "normalizacja")
     png_path = normalized_dir / f"{image_stem}_normalized.png"
     npy_path = normalized_dir / f"{image_stem}_normalized.npy"
     if not cv2.imwrite(str(png_path), normalized):
         raise IrisPipelineError(f"Failed to save normalized iris image: {png_path}")
     np.save(npy_path, normalized)
     if params.save_debug_images:
-        debug_dir = output_dir / "debug"
-        debug_dir.mkdir(parents=True, exist_ok=True)
+        stage_dir = _stage_images_dir(output_dir, "normalizacja")
         overlay = cv2.applyColorMap(normalized, cv2.COLORMAP_TURBO)
         for band_idx in range(1, params.radial_bands):
             y = band_idx * params.radial_samples_per_band
             cv2.line(overlay, (0, y), (overlay.shape[1] - 1, y), (255, 255, 255), 1)
-        cv2.imwrite(str(debug_dir / f"{image_stem}_normalized_bands.png"), overlay)
+        cv2.imwrite(str(stage_dir / f"{image_stem}_normalized_bands.png"), overlay)
     return png_path, npy_path
 
 
@@ -784,17 +785,15 @@ def _encode_signals(signals: np.ndarray, params: Stage6Params) -> tuple[np.ndarr
 
 
 def _save_stage6(output_dir: Path, stem: str, code_bits: np.ndarray, mask_bits: np.ndarray, magnitude: np.ndarray, params: Stage6Params) -> tuple[Path, Path]:
-    enc_dir = output_dir / "encoding"
-    enc_dir.mkdir(parents=True, exist_ok=True)
+    enc_dir = _stage_images_dir(output_dir, "kodowanie")
     code_path = enc_dir / f"{stem}_iris_code.npy"
     mask_path = enc_dir / f"{stem}_iris_mask.npy"
     np.save(code_path, code_bits)
     np.save(mask_path, mask_bits)
     if params.save_debug_images:
-        debug_dir = output_dir / "debug"
-        debug_dir.mkdir(parents=True, exist_ok=True)
+        stage_dir = _stage_images_dir(output_dir, "kodowanie")
         heatmap = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        cv2.imwrite(str(debug_dir / f"{stem}_gabor_magnitude.png"), cv2.applyColorMap(heatmap, cv2.COLORMAP_INFERNO))
+        cv2.imwrite(str(stage_dir / f"{stem}_gabor_magnitude.png"), cv2.applyColorMap(heatmap, cv2.COLORMAP_INFERNO))
     return code_path, mask_path
 
 
@@ -1017,23 +1016,60 @@ def _compute_far_frr(genuine: np.ndarray, impostor: np.ndarray, steps: int) -> t
 
 
 def _draw_histogram(genuine: np.ndarray, impostor: np.ndarray, output_path: Path) -> None:
-    width, height = 1000, 600
+    width, height = 1100, 700
     canvas = np.full((height, width, 3), 255, dtype=np.uint8)
-    margin, bins = 60, 40
+    margin_left, margin_right, margin_top, margin_bottom = 90, 40, 70, 80
+    bins = 40
     g_hist, _ = np.histogram(genuine, bins=bins, range=(0.0, 1.0))
     i_hist, _ = np.histogram(impostor, bins=bins, range=(0.0, 1.0))
-    max_count = max(int(g_hist.max()) if genuine.size else 0, int(i_hist.max()) if impostor.size else 0, 1)
-    plot_w, plot_h = width - 2 * margin, height - 2 * margin
+    y_max = max(int(g_hist.max()) if genuine.size else 0, int(i_hist.max()) if impostor.size else 0, 1)
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
     bin_w = plot_w / bins
+    y_base = height - margin_bottom
+
+    # Axes
+    cv2.line(canvas, (margin_left, y_base), (width - margin_right, y_base), (0, 0, 0), 2)
+    cv2.line(canvas, (margin_left, margin_top), (margin_left, y_base), (0, 0, 0), 2)
+
+    # X-axis ticks and labels (Hamming distance).
+    x_ticks = 10
+    for tick in range(x_ticks + 1):
+        value = tick / x_ticks
+        x = int(margin_left + value * plot_w)
+        cv2.line(canvas, (x, y_base), (x, y_base + 6), (0, 0, 0), 1)
+        cv2.putText(canvas, f"{value:.1f}", (x - 12, y_base + 24), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1)
+
+    # Y-axis ticks and labels (counts, shared for both groups).
+    y_ticks = 8
+    for tick in range(y_ticks + 1):
+        value = int(round((tick / y_ticks) * y_max))
+        y = int(y_base - (tick / y_ticks) * plot_h)
+        cv2.line(canvas, (margin_left - 6, y), (margin_left, y), (0, 0, 0), 1)
+        cv2.line(canvas, (margin_left, y), (width - margin_right, y), (235, 235, 235), 1)
+        cv2.putText(canvas, str(value), (10, y + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1)
+
     for idx in range(bins):
-        x0 = int(margin + idx * bin_w)
-        x1 = int(margin + (idx + 1) * bin_w) - 1
-        gh = int((g_hist[idx] / max_count) * plot_h)
-        ih = int((i_hist[idx] / max_count) * plot_h)
-        cv2.rectangle(canvas, (x0, height - margin - gh), (x1, height - margin), (70, 140, 240), -1)
-        cv2.rectangle(canvas, (x0, height - margin - ih), (x1, height - margin), (60, 180, 75), 2)
-    cv2.rectangle(canvas, (margin, margin), (width - margin, height - margin), (0, 0, 0), 1)
-    cv2.putText(canvas, "Genuine (blue) vs Impostor (green) distances", (margin, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+        x0 = int(margin_left + idx * bin_w)
+        x1 = int(margin_left + (idx + 1) * bin_w) - 1
+        mid = (x0 + x1) // 2
+        gh = int((g_hist[idx] / y_max) * plot_h) if genuine.size else 0
+        ih = int((i_hist[idx] / y_max) * plot_h) if impostor.size else 0
+        # Left half: genuine (blue), right half: impostor (green).
+        if gh > 0:
+            cv2.rectangle(canvas, (x0, y_base - gh), (max(x0, mid - 1), y_base), (255, 0, 0), -1)
+        if ih > 0:
+            cv2.rectangle(canvas, (mid, y_base - ih), (x1, y_base), (0, 180, 0), -1)
+
+    # Labels and legend
+    cv2.putText(canvas, "Distance Histogram", (margin_left, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 2)
+    cv2.putText(canvas, "Hamming distance", (width // 2 - 70, height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+    cv2.putText(canvas, "Count", (10, margin_top - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+    cv2.rectangle(canvas, (width - 500, 16), (width - 480, 36), (255, 0, 0), -1)
+    cv2.putText(canvas, "Genuine", (width - 472, 31), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 2)
+    cv2.rectangle(canvas, (width - 360, 16), (width - 340, 36), (0, 180, 0), -1)
+    cv2.putText(canvas, "Impostor", (width - 332, 31), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 2)
+    cv2.putText(canvas, "(shared Y scale: count)", (width - 220, 31), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1)
     cv2.imwrite(str(output_path), canvas)
 
 
